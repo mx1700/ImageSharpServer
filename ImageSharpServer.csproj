@@ -8,6 +8,7 @@
     <DockerfileContext>.</DockerfileContext>
     <ContainerRepository>imagesharp-server</ContainerRepository>
     <InvariantGlobalization>true</InvariantGlobalization>
+    <PublishReadyToRun>true</PublishReadyToRun>
   </PropertyGroup>
 
   <ItemGroup>
