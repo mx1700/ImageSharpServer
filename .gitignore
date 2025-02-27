@@ -1,0 +1,9 @@
+.vs
+.idea
+bin
+obj
+ImageSharpServer.csproj.user
+*.pubxml.user
+*.DotSettings.user
+cache
+images
