@@ -1,17 +1,15 @@
-﻿using SixLabors.ImageSharp.Web.Providers;
-using SixLabors.ImageSharp.Web.Providers.AWS;
-
-namespace ImageSharpServer;
-
+﻿using Amazon;
+using Amazon.Runtime;
 using Amazon.S3;
 using Amazon.S3.Model;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.Extensions.Options;
+using SixLabors.ImageSharp.Web.Providers;
+using SixLabors.ImageSharp.Web.Providers.AWS;
 using SixLabors.ImageSharp.Web.Resolvers;
 using SixLabors.ImageSharp.Web.Resolvers.AWS;
-using Amazon;
-using Amazon.Runtime;
+
+namespace ImageSharpServer.Provider;
 
 /// <summary>
 /// Returns images stored in AWS S3.
@@ -24,12 +22,12 @@ public class S3StorageImageProvider : IImageProvider
     /// <summary>
     /// Character array to remove from paths.
     /// </summary>
-    private static readonly char[] SlashChars = { '\\', '/' };
+    private static readonly char[] SlashChars = ['\\', '/'];
 
     /// <summary>
     /// The containers for the blob services.
     /// </summary>
-    private readonly Dictionary<string, AmazonS3Client> buckets
+    private readonly Dictionary<string, (AmazonS3Client, S3BucketClientOptions)> buckets
         = new();
 
     private readonly S3StorageImageProviderOptions storageOptions;
@@ -53,9 +51,9 @@ public class S3StorageImageProvider : IImageProvider
 
         this.formatUtilities = formatUtilities;
 
-        foreach (S3BucketClientOptions bucket in this.storageOptions.S3Buckets)
+        foreach (var bucketOptions in this.storageOptions.S3Buckets)
         {
-            this.buckets.Add(bucket.BucketName, CreateClient(bucket));
+            this.buckets.Add(bucketOptions.BucketName, (CreateClient(bucketOptions), bucketOptions));
         }
     }
 
@@ -79,7 +77,7 @@ public class S3StorageImageProvider : IImageProvider
         // Strip the leading slash and bucket name from the HTTP request path and treat
         // the remaining path string as the key.
         // Path has already been correctly parsed before here.
-        string bucketName = string.Empty;
+        string? bucketName = null;
         IAmazonS3? s3Client = null;
 
         // We want an exact match here to ensure that bucket names starting with
@@ -91,27 +89,18 @@ public class S3StorageImageProvider : IImageProvider
             return null;
         }
 
-        int index = path.IndexOfAny(SlashChars);
-        string nameToMatch = index != -1 ? path.Substring(0, index) : path;
-
-        foreach (string k in this.buckets.Keys)
-        {
-            if (nameToMatch.Equals(k, StringComparison.OrdinalIgnoreCase))
-            {
-                bucketName = k;
-                s3Client = this.buckets[k];
-                break;
-            }
-        }
+        string? matchPrefix = null;
+        (s3Client, matchPrefix, bucketName) = GetClient(path);
 
         // Something has gone horribly wrong for this to happen but check anyway.
-        if (s3Client is null)
+        if (s3Client is null || bucketName is null)
         {
             return null;
         }
 
         // Key should be the remaining path string.
-        string key = path.Substring(bucketName.Length).TrimStart(SlashChars);
+        // 当没有配置 Prefix 时，matchPrefix 为 bucketName，此时文件名需要去除 bucketName前缀
+        var key = matchPrefix == bucketName ? path[bucketName.Length..].TrimStart(SlashChars) : path;
 
         if (string.IsNullOrWhiteSpace(key))
         {
@@ -138,15 +127,29 @@ public class S3StorageImageProvider : IImageProvider
             return false;
         }
 
-        foreach (string bucket in this.buckets.Keys)
+        var (client, _, _) = this.GetClient(path);
+
+        return client != null;
+    }
+    
+    private (AmazonS3Client? client, string? prefix, string? backetName) GetClient(string path)
+    {
+        var index = path.IndexOfAny(SlashChars);
+        var nameToMatch = index != -1 ? path.Substring(0, index) : path;
+
+        foreach (var (client, options) in this.buckets.Values)
         {
-            if (path.StartsWith(bucket, StringComparison.OrdinalIgnoreCase))
+            var matchPrefix = options.Prefix.Length == 0 ? 
+                nameToMatch.Equals(options.BucketName, StringComparison.OrdinalIgnoreCase) ? options.BucketName : null : 
+                options.Prefix.FirstOrDefault(p => path.StartsWith(p.TrimStart(SlashChars), StringComparison.OrdinalIgnoreCase));
+
+            if (matchPrefix != null)
             {
-                return true;
+                return (client, matchPrefix, options.BucketName);
             }
         }
 
-        return false;
+        return (null, null, null);
     }
 
     // ref https://github.com/aws/aws-sdk-net/blob/master/sdk/src/Services/S3/Custom/_bcl/IO/S3FileInfo.cs#L118

@@ -1,4 +1,6 @@
 using ImageSharpServer;
+using ImageSharpServer.Provider;
+using Microsoft.Extensions.Options;
 using SixLabors.ImageSharp.Web.Caching;
 using SixLabors.ImageSharp.Web.DependencyInjection;
 using SixLabors.ImageSharp.Web.Processors;
@@ -17,17 +19,30 @@ var imageSharpBuilder = builder.Services.AddImageSharp()
         options.CacheFolder = "./";
     });
 
-if (builder.Configuration["IMAGES_ROOT_PATH"] != null)
+imageSharpBuilder.RemoveProvider<PhysicalFileSystemProvider>();
+
+if (builder.Configuration["FILE_ROOT_PATH"] != null)
 {
-    imageSharpBuilder.Configure<PhysicalFileSystemProviderOptions>(options =>
+    imageSharpBuilder.Configure<CustomFileSystemProviderOptions>(options =>
     {
-        options.ProviderRootPath = builder.Configuration["IMAGES_ROOT_PATH"] ??
+        options.ProviderRootPath = builder.Configuration["FILE_ROOT_PATH"] ??
                                    Path.Combine(builder.Environment.ContentRootPath, "images");
+        options.MatchType = builder.Configuration["FILE_MATCH_TYPE"] switch
+        {
+            "Prefix" => FileSystemProviderMatchType.Prefix,
+            "FileExists" => FileSystemProviderMatchType.FileExists,
+            "Prefix|FileExists" => FileSystemProviderMatchType.Prefix | FileSystemProviderMatchType.FileExists,
+            _ => FileSystemProviderMatchType.Always
+        };
+        options.Prefix = builder.Configuration["FILE_MATCH_PREFIX"]?.Split('|') ?? [];
+        options.ProcessingBehavior = ProcessingBehavior.All;
     });
-}
-else
-{
-    imageSharpBuilder.RemoveProvider<PhysicalFileSystemProvider>();
+    imageSharpBuilder.AddProvider<CustomFileSystemProvider>(service =>
+    {
+        var options = service.GetService<IOptions<CustomFileSystemProviderOptions>>()!;
+        var fileProvider = CustomFileSystemProvider.GetProvider(options, builder.Environment);
+        return new CustomFileSystemProvider(options, fileProvider, service.GetService<FormatUtilities>()!);
+    });
 }
 
 if (builder.Configuration["S3_BUCKET_NAME"] != null)
@@ -45,6 +60,7 @@ if (builder.Configuration["S3_BUCKET_NAME"] != null)
                     ? TimeSpan.FromSeconds(int.Parse(builder.Configuration["S3_TIMEOUT"]!))
                     : TimeSpan.FromSeconds(5),
                 ForcePathStyle = builder.Configuration["S3_FORCE_PATH_STYLE"] == "true",
+                Prefix = builder.Configuration["S3_PREFIX"]?.Split('|') ?? []
             });
         })
         .AddProvider<S3StorageImageProvider>();

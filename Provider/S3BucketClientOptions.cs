@@ -1,6 +1,6 @@
 ﻿using SixLabors.ImageSharp.Web.Providers.AWS;
 
-namespace ImageSharpServer;
+namespace ImageSharpServer.Provider;
 
 public class S3StorageImageProviderOptions
 {
@@ -13,4 +13,5 @@ public class S3StorageImageProviderOptions
 public class S3BucketClientOptions: AWSS3BucketClientOptions
 {
     public bool ForcePathStyle { get; set; } = false;
+    public string[] Prefix { get; set; } = [];
 }
