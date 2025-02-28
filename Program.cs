@@ -34,7 +34,7 @@ if (builder.Configuration["FILE_ROOT_PATH"] != null)
             "Prefix|FileExists" => FileSystemProviderMatchType.Prefix | FileSystemProviderMatchType.FileExists,
             _ => FileSystemProviderMatchType.Always
         };
-        options.Prefix = builder.Configuration["FILE_MATCH_PREFIX"];
+        options.Prefix = builder.Configuration["FILE_MATCH_PREFIX"]?.Split('|') ?? [];
         options.ProcessingBehavior = ProcessingBehavior.All;
     });
     imageSharpBuilder.AddProvider<CustomFileSystemProvider>(service =>

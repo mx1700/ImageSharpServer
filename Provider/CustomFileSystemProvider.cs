@@ -97,8 +97,8 @@ public class CustomFileSystemProvider: FileProviderImageProvider
         
         if ((Options.MatchType & FileSystemProviderMatchType.Prefix) == FileSystemProviderMatchType.Prefix && Options.Prefix is not null)
         {
-            var prefix = Options.Prefix.TrimStart(SlashChars);
-            match = match && path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
+            var prefixMatch = Options.Prefix.Any(p => path.StartsWith(p.TrimStart(SlashChars), StringComparison.OrdinalIgnoreCase));
+            match = match && prefixMatch;
         }
 
         if ((Options.MatchType & FileSystemProviderMatchType.FileExists) == FileSystemProviderMatchType.FileExists)

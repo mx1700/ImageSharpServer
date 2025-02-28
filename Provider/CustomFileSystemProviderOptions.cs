@@ -5,7 +5,7 @@ namespace ImageSharpServer.Provider;
 public class CustomFileSystemProviderOptions: PhysicalFileSystemProviderOptions
 {
     public FileSystemProviderMatchType MatchType { get; set; } = FileSystemProviderMatchType.Always;
-    public string? Prefix { get; set; }
+    public string[] Prefix { get; set; } = [];
 }
 
 [Flags]
