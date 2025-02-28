@@ -60,6 +60,7 @@ if (builder.Configuration["S3_BUCKET_NAME"] != null)
                     ? TimeSpan.FromSeconds(int.Parse(builder.Configuration["S3_TIMEOUT"]!))
                     : TimeSpan.FromSeconds(5),
                 ForcePathStyle = builder.Configuration["S3_FORCE_PATH_STYLE"] == "true",
+                Prefix = builder.Configuration["S3_PREFIX"]?.Split('|') ?? []
             });
         })
         .AddProvider<S3StorageImageProvider>();
