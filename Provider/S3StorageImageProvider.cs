@@ -1,17 +1,15 @@
-﻿using SixLabors.ImageSharp.Web.Providers;
-using SixLabors.ImageSharp.Web.Providers.AWS;
-
-namespace ImageSharpServer;
-
+﻿using Amazon;
+using Amazon.Runtime;
 using Amazon.S3;
 using Amazon.S3.Model;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.Extensions.Options;
+using SixLabors.ImageSharp.Web.Providers;
+using SixLabors.ImageSharp.Web.Providers.AWS;
 using SixLabors.ImageSharp.Web.Resolvers;
 using SixLabors.ImageSharp.Web.Resolvers.AWS;
-using Amazon;
-using Amazon.Runtime;
+
+namespace ImageSharpServer.Provider;
 
 /// <summary>
 /// Returns images stored in AWS S3.

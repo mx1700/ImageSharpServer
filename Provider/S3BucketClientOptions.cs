@@ -1,6 +1,6 @@
 ﻿using SixLabors.ImageSharp.Web.Providers.AWS;
 
-namespace ImageSharpServer;
+namespace ImageSharpServer.Provider;
 
 public class S3StorageImageProviderOptions
 {
